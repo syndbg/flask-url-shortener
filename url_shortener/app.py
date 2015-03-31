@@ -36,18 +36,30 @@ def urls():
         per_page = data.get('per_page', DEFAULT_PER_PAGE)
 
         db_result = db.Url.objects.paginate(page=page, per_page=per_page)
-        return jsonify([apify(r) for r in db_result]), 200
-    else:
-        pass
+        output = [apify(r) for r in db_result]
+        status_code = 200
+
+    elif db.Url.has_all_required_fields(data):
+        db_result = db.Url(**data)
+        db.save()
+        output = apify(db_result)
+        status_code = 200
+    return jsonify(output), status_code
 
 
 @app.route('/api/urls/<url>', methods=['GET', 'PUT', 'DELETE'])
 def url_by_string(url):
     method_type = request.method
+    data = request.json
 
-    db_result = db.Url.objects(Q(short_url=url) || Q(long_url=url))
-    if method_type == 'GET':
-
+    db_result = db.Url.objects.get_or_404(Q(short_url=url) | Q(long_url=url))
+    if method_type != 'GET' and db.Url.has_any_required_fields(data):
+        if method_type == 'DELETE':
+            output = apify(db_result)
+            db_result.delete()
+        else:
+            db_result.update_fields(data)
+            output = apify(db_result)
     else:
-
-    return 'hey'
+        output = apify(db_result)
+    return jsonify(output), 200

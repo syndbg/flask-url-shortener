@@ -13,6 +13,7 @@ def apify(db_url):
 
 
 class EncoderError(Exception):
+
     def __init__(self, value):
         self.value = value
 
